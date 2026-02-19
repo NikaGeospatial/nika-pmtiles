@@ -13,3 +13,4 @@ FROM gcr.io/distroless/static
 COPY --from=builder /workspace/go-pmtiles /go-pmtiles
 EXPOSE 8080
 ENTRYPOINT ["/go-pmtiles"]
+CMD ["serve", "/data", "--cors=https://*.nika.eco,http://localhost:3000"]

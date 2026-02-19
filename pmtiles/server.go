@@ -6,14 +6,16 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/rs/cors"
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/rs/cors"
 )
 
 type cacheKey struct {
@@ -292,7 +294,8 @@ func (server *Server) getTileJSON(ctx context.Context, httpHeaders map[string]st
 		return 501, httpHeaders, []byte("PUBLIC_URL must be set for TileJSON")
 	}
 
-	tilejsonBytes, err := CreateTileJSON(header, metadataBytes, server.publicURL+"/"+name)
+	escapedName := pathEscape(name)
+	tilejsonBytes, err := CreateTileJSON(header, metadataBytes, server.publicURL+"/"+escapedName)
 	if err != nil {
 		return 500, httpHeaders, []byte("Error generating tilejson")
 	}
@@ -437,9 +440,9 @@ func isCanceled(ctx context.Context) bool {
 	return errors.Is(ctx.Err(), context.Canceled)
 }
 
-var tilePattern = regexp.MustCompile(`^\/([-A-Za-z0-9_\/!-_\.\*'\(\)']+)\/(\d+)\/(\d+)\/(\d+)\.([a-z]+)$`)
-var metadataPattern = regexp.MustCompile(`^\/([-A-Za-z0-9_\/!-_\.\*'\(\)']+)\/metadata$`)
-var tileJSONPattern = regexp.MustCompile(`^\/([-A-Za-z0-9_\/!-_\.\*'\(\)']+)\.json$`)
+var tilePattern = regexp.MustCompile(`^\/([-A-Za-z0-9_\/!-_\.\*'\(\) ]+)\/(\d+)\/(\d+)\/(\d+)\.([a-z]+)$`)
+var metadataPattern = regexp.MustCompile(`^\/([-A-Za-z0-9_\/!-_\.\*'\(\) ]+)\/metadata$`)
+var tileJSONPattern = regexp.MustCompile(`^\/([-A-Za-z0-9_\/!-_\.\*'\(\) ]+)\.json$`)
 
 func parseTilePath(path string) (bool, string, uint8, uint32, uint32, string) {
 	if res := tilePattern.FindStringSubmatch(path); res != nil {
@@ -467,6 +470,14 @@ func parseMetadataPath(path string) (bool, string) {
 		return true, name
 	}
 	return false, ""
+}
+
+func pathEscape(s string) string {
+	parts := strings.Split(s, "/")
+	for i, p := range parts {
+		parts[i] = url.PathEscape(p)
+	}
+	return strings.Join(parts, "/")
 }
 
 func (server *Server) get(ctx context.Context, unsanitizedPath string) (archive, handler string, status int, headers map[string]string, data []byte) {
