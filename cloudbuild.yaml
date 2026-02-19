@@ -1,0 +1,40 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '--platform=linux/amd64'
+      - '-t'
+      - 'us-central1-docker.pkg.dev/nika-364317/visualization/nika-vector-tile-server:latest'
+      - '.'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'us-central1-docker.pkg.dev/nika-364317/visualization/nika-vector-tile-server:latest'
+
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      [
+        'run',
+        'deploy',
+        'nika-vector-tile-server',
+        '--image',
+        'us-central1-docker.pkg.dev/nika-364317/visualization/nika-vector-tile-server:latest',
+        '--port',
+        '8080',
+        '--region',
+        'us-central1',
+        '--platform',
+        'managed',
+        '--allow-unauthenticated',
+        '--service-account',
+        'workbench-executor@nika-364317.iam.gserviceaccount.com',
+        '--add-volume=name=data-volume,type=cloud-storage,bucket=planetgpt',
+        '--add-volume-mount=volume=data-volume,mount-path=/data',
+        '--add-volume=name=temp-volume,type=cloud-storage,bucket=planetgpt-temp',
+        '--add-volume-mount=volume=temp-volume,mount-path=/temp',
+      ]
+
+timeout: '1200s'
+options:
+  logging: CLOUD_LOGGING_ONLY
